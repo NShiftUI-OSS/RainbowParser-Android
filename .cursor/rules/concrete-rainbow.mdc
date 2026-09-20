@@ -1,0 +1,12 @@
+---
+description: Android RainbowParser is concrete Rainbow only; no #{Name} expand
+alwaysApply: true
+---
+
+# Rainbow concreto (Android)
+
+Esta biblioteca é o parser **mobile** (Kotlin, minSdk API 23). Não implemente furos `#{Name}` nem API de expand.
+
+- Substituição de templates é exclusividade de `RainbowParser-Rust` (API global do backend).
+- O frontend recebe Rainbow já expandido: `use Name@MAJOR.MINOR.PATCH`, nomes de nó identificadores, enum `.name`, `@LANG(...)` com body real.
+- Espelhe a API pública do iOS e a gramática **concreta** do Rust. Ver `AGENTS.md` e `Docs/Harness/Decisions.md`.
