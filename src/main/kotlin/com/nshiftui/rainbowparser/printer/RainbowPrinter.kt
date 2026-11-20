@@ -4,6 +4,7 @@ import com.nshiftui.rainbowparser.RainbowFormatStyle
 import com.nshiftui.rainbowparser.ast.RainbowDocument
 import com.nshiftui.rainbowparser.ast.RainbowLeadingTrivia
 import com.nshiftui.rainbowparser.ast.RainbowNode
+import com.nshiftui.rainbowparser.ast.RainbowObjectEntry
 import com.nshiftui.rainbowparser.ast.RainbowParameter
 import com.nshiftui.rainbowparser.ast.RainbowTaggedBody
 import com.nshiftui.rainbowparser.ast.RainbowUseDeclaration
@@ -45,8 +46,9 @@ internal class RainbowPrinter(
         pushLeading(parts, node.leading, level)
 
         var header = indent + node.name
+        val emitConstructor = !isTriggerNodeName(node.name)
 
-        if (node.parameters.isNotEmpty()) {
+        if (node.parameters.isNotEmpty() || emitConstructor) {
             if (shouldBreakParameters(node)) {
                 header += "("
                 parts.add(header)
@@ -62,8 +64,10 @@ internal class RainbowPrinter(
                 parts.add("$indent)")
             } else {
                 header += "("
-                header += node.parameters.joinToString(", ") {
-                    printParameterInline(it, indentation(level + 1))
+                if (node.parameters.isNotEmpty()) {
+                    header += node.parameters.joinToString(", ") {
+                        printParameterInline(it, indentation(level + 1))
+                    }
                 }
                 header += ")"
                 parts.add(header)
@@ -138,12 +142,7 @@ internal class RainbowPrinter(
             }
             is RainbowValue.ArrayValue ->
                 "[" + value.values.joinToString(", ") { printValue(it, continuationIndent) } + "]"
-            is RainbowValue.ObjectValue -> {
-                val printedEntries = value.entries.joinToString(", ") { entry ->
-                    "${printObjectKey(entry.key)}: ${printValue(entry.value, continuationIndent)}"
-                }
-                "($printedEntries)"
-            }
+            is RainbowValue.ObjectValue -> printObject(value.entries, continuationIndent)
             is RainbowValue.Null -> "null"
         }
 
@@ -163,6 +162,38 @@ internal class RainbowPrinter(
         }
         output.append(")")
         return output.toString()
+    }
+
+    private fun printObject(entries: List<RainbowObjectEntry>, continuationIndent: String): String {
+        if (!objectNeedsBreak(entries)) {
+            val printedEntries = entries.joinToString(", ") { entry ->
+                "${printObjectKey(entry.key)}: ${printValue(entry.value, continuationIndent)}"
+            }
+            return "($printedEntries)"
+        }
+
+        val inner = continuationIndent + style.indentation
+        val lines = mutableListOf("(")
+        for ((index, entry) in entries.withIndex()) {
+            val entryLines = printObjectEntryLines(entry, inner).toMutableList()
+            if (index != entries.lastIndex && entryLines.isNotEmpty()) {
+                val lastIndex = entryLines.lastIndex
+                entryLines[lastIndex] = entryLines[lastIndex] + ","
+            }
+            lines.addAll(entryLines)
+        }
+        lines.add("$continuationIndent)")
+        return lines.joinToString(style.newline)
+    }
+
+    private fun printObjectEntryLines(entry: RainbowObjectEntry, indent: String): List<String> {
+        val value = printValue(entry.value, indent)
+        val valueLines = splitOnNewlineGrapheme(value)
+        val key = printObjectKey(entry.key)
+        if (valueLines.size <= 1) {
+            return listOf("$indent$key: $value")
+        }
+        return listOf("$indent$key: ${valueLines[0]}") + valueLines.drop(1)
     }
 
     private fun printObjectKey(key: String): String =
@@ -188,15 +219,22 @@ internal class RainbowPrinter(
 }
 
 private fun shouldBreakParameters(node: RainbowNode): Boolean {
-    if (isTriggerNodeName(node.name)) return false
-    if (node.parameters.size >= 2) return true
-    return node.parameters.any { parameter ->
-        val value = parameter.value
-        value is RainbowValue.Tagged &&
-            value.body is RainbowTaggedBody.Text &&
-            value.body.value.contains('\n')
-    }
+    if (node.parameters.isEmpty()) return false
+    val complex = node.parameters.any { valueNeedsBreak(it.value) }
+    if (isTriggerNodeName(node.name)) return complex
+    return node.parameters.size >= 2 || complex
 }
+
+private fun valueNeedsBreak(value: RainbowValue): Boolean = when (value) {
+    is RainbowValue.Tagged ->
+        value.body is RainbowTaggedBody.Text && value.body.value.contains('\n')
+    is RainbowValue.ObjectValue -> objectNeedsBreak(value.entries)
+    is RainbowValue.ArrayValue -> value.values.any { valueNeedsBreak(it) }
+    else -> false
+}
+
+private fun objectNeedsBreak(entries: List<RainbowObjectEntry>): Boolean =
+    entries.size >= 2 || entries.any { valueNeedsBreak(it.value) }
 
 private fun isTriggerNodeName(name: String): Boolean {
     val graphemes = splitGraphemes(name)

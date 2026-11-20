@@ -1,6 +1,5 @@
 package com.nshiftui.rainbowparser
 
-import com.nshiftui.rainbowparser.ast.RainbowBlock
 import com.nshiftui.rainbowparser.ast.RainbowDocument
 import com.nshiftui.rainbowparser.ast.RainbowNode
 import com.nshiftui.rainbowparser.ast.RainbowObjectEntry
@@ -51,7 +50,10 @@ class PrinterTests : FunSpec({
                                 RainbowParameter(name = "variant", value = RainbowValue.Identifier("primary")),
                             ),
                             children = listOf(
-                                RainbowNode(name = "OnTap", block = RainbowBlock()),
+                                RainbowNode(
+                                    name = "OnTap",
+                                    children = listOf(RainbowNode(name = "Navigate")),
+                                ),
                             ),
                         ),
                     ),
@@ -66,6 +68,7 @@ class PrinterTests : FunSpec({
                 variant: .primary
               ) {
                 OnTap {
+                  Navigate()
                 }
               }
             }
@@ -132,7 +135,17 @@ class PrinterTests : FunSpec({
               disabled: false,
               variant: .primary,
               items: ["a", 1, null],
-              meta: (id: "home", "dash-key": false, "": 0, "1bad": 1, "a-": 2, "😀": 3, _id: 4, A1: 5, "a😀": 6)
+              meta: (
+                id: "home",
+                "dash-key": false,
+                "": 0,
+                "1bad": 1,
+                "a-": 2,
+                "😀": 3,
+                _id: 4,
+                A1: 5,
+                "a😀": 6
+              )
             )
         """.trimIndent()
     }
@@ -147,7 +160,7 @@ class PrinterTests : FunSpec({
             ),
         )
         val style = RainbowFormatStyle(indentation = "    ", newline = "\r\n")
-        RainbowEncoder(style).encode(document) shouldBe "Root {\r\n    Child\r\n}"
+        RainbowEncoder(style).encode(document) shouldBe "Root() {\r\n    Child()\r\n}"
     }
 
     test("parserFacadeEncodesAndDecodes") {
@@ -162,6 +175,75 @@ class PrinterTests : FunSpec({
               }
             }
         """.trimIndent()
+    }
+
+    test("printerBreaksObjectFieldsAndEmitsConstructors") {
+        val source = """
+            Screen(
+              navigationBar: (title: "Feedback", theme: "amber", leading: "back"),
+              scroll: (enabled: true, fastRefresh: true)
+            ) {
+              VerticalStack(style: (alignment: .leading, spacing: 12)) {
+                Progress(value: 0.66)
+                Spinner
+                Separator
+              }
+            }
+        """.trimIndent()
+        val parser = RainbowParser()
+        parser.encode(parser.decode(source)) shouldBe """
+            Screen(
+              navigationBar: (
+                title: "Feedback",
+                theme: "amber",
+                leading: "back"
+              ),
+              scroll: (
+                enabled: true,
+                fastRefresh: true
+              )
+            ) {
+              VerticalStack(
+                style: (
+                  alignment: .leading,
+                  spacing: 12
+                )
+              ) {
+                Progress(value: 0.66)
+
+                Spinner()
+
+                Separator()
+              }
+            }
+        """.trimIndent()
+    }
+
+    test("printerBreaksNestedObjectsAtEveryLevel") {
+        val parser = RainbowParser()
+        parser.encode(
+            parser.decode(
+                "VerticalStack(style: (alignment: (horizontal: .leading, vertical: .center), spacing: 12))",
+            ),
+        ) shouldBe """
+            VerticalStack(
+              style: (
+                alignment: (
+                  horizontal: .leading,
+                  vertical: .center
+                ),
+                spacing: 12
+              )
+            )
+        """.trimIndent()
+    }
+
+    test("printerKeepsSingleFieldObjectsAndScalarsCompact") {
+        val parser = RainbowParser()
+        parser.encode(parser.decode("Node(meta: (id: \"home\"))")) shouldBe "Node(meta: (id: \"home\"))"
+        parser.encode(parser.decode("Progress(value: 0.66)")) shouldBe "Progress(value: 0.66)"
+        parser.encode(parser.decode("Spinner")) shouldBe "Spinner()"
+        parser.encode(parser.decode("Separator()")) shouldBe "Separator()"
     }
 
     test("emptyDocumentEncodesToEmptyString") {
