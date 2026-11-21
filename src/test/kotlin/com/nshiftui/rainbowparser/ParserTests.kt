@@ -275,6 +275,33 @@ class ParserTests : FunSpec({
         messages shouldContain "Expected ')' after parameter list."
     }
 
+    test("parserAllowsChildrenBlockWithoutEmptyParentheses") {
+        val document = RainbowDecoder().decode(
+            """
+            Screen {
+              Card {
+                Text(text: "A")
+              }
+            }
+            """.trimIndent(),
+        )
+        val screen = document.nodes.first()
+        screen.name shouldBe "Screen"
+        screen.parameters shouldBe emptyList()
+        screen.hasBlock shouldBe true
+        screen.children.first().name shouldBe "Card"
+        screen.children.first().hasBlock shouldBe true
+
+        expectDecodeError(
+            """
+            Screen
+            {
+              Text(text: "A")
+            }
+            """.trimIndent(),
+        ).diagnostics.first().code shouldBe "rainbow.parser.childrenBrace"
+    }
+
     test("parserDecodesTaggedEmbeddedValues") {
         val document = RainbowDecoder().decode(
             """

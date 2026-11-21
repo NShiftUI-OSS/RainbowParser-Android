@@ -114,19 +114,15 @@ internal class RainbowSyntaxParser(private val tokens: List<RainbowToken>) {
 
         var anchor = previous.range.end.line
         val block = if (check(RainbowTokenKind.LeftBrace)) {
-            if (!hadParentheses) {
+            if (peek.range.start.line != anchor) {
                 diagnostics.add(
                     RainbowDiagnostic(
                         code = "rainbow.parser.childrenBrace",
-                        message = "A children block belongs after '()', on the same line as ')'.",
-                        range = peek.range,
-                    ),
-                )
-            } else if (peek.range.start.line != anchor) {
-                diagnostics.add(
-                    RainbowDiagnostic(
-                        code = "rainbow.parser.childrenBrace",
-                        message = "The children block must open on the same line as ')'.",
+                        message = if (hadParentheses) {
+                            "The children block must open on the same line as ')'."
+                        } else {
+                            "The children block must open on the same line as the name."
+                        },
                         range = peek.range,
                     ),
                 )
