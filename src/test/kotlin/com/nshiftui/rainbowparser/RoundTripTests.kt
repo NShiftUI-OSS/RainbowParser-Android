@@ -38,7 +38,7 @@ class RoundTripTests : FunSpec({
                 """
                 use Screen@1.0.0
                 // root comment
-                Screen() {
+                Screen {
                   Text(text: "a")
                   // between plugins
                   Button(title: "b")
@@ -47,7 +47,7 @@ class RoundTripTests : FunSpec({
             ),
         )
 
-        formatted shouldContain "use Screen@1.0.0\n\n// root comment\nScreen() {"
+        formatted shouldContain "use Screen@1.0.0\n\n// root comment\nScreen {"
         formatted shouldContain "Text(text: \"a\")\n\n  // between plugins\n  Button(title: \"b\")"
     }
 

@@ -142,8 +142,8 @@ class ParserTests : FunSpec({
     test("parserPreservesEmptyArgumentsAndBlocks") {
         val document = RainbowDecoder().decode(
             """
-            Root() {
-              EmptyBlock() {}
+            Root {
+              EmptyBlock {}
               Leaf
             }
             """.trimIndent(),
@@ -228,7 +228,7 @@ class ParserTests : FunSpec({
     }
 
     test("parserReportsMissingClosingBlockBrace") {
-        expectDecodeError("Screen() { Button").diagnostics.first().message shouldBe
+        expectDecodeError("Screen { Button").diagnostics.first().message shouldBe
             "Expected '}' after block."
     }
 
@@ -255,7 +255,7 @@ class ParserTests : FunSpec({
     }
 
     test("parserRecoversFromUnexpectedTokenInsideBlock") {
-        expectDecodeError("Root() { ) ( Child }").diagnostics.first().message shouldBe
+        expectDecodeError("Root { ) ( Child }").diagnostics.first().message shouldBe
             "Expected node name."
     }
 
@@ -300,6 +300,14 @@ class ParserTests : FunSpec({
             }
             """.trimIndent(),
         ).diagnostics.first().code shouldBe "rainbow.parser.childrenBrace"
+
+        expectDecodeError(
+            """
+            Screen() {
+              Text(text: "A")
+            }
+            """.trimIndent(),
+        ).diagnostics.first().code shouldBe "rainbow.parser.emptyConstructorBlock"
     }
 
     test("parserDecodesTaggedEmbeddedValues") {

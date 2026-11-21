@@ -162,7 +162,7 @@ class PrinterTests : FunSpec({
             ),
         )
         val style = RainbowFormatStyle(indentation = "    ", newline = "\r\n")
-        RainbowEncoder(style).encode(document) shouldBe "Root() {\r\n    Child()\r\n}"
+        RainbowEncoder(style).encode(document) shouldBe "Root {\r\n    Child()\r\n}"
     }
 
     test("parserFacadeEncodesAndDecodes") {

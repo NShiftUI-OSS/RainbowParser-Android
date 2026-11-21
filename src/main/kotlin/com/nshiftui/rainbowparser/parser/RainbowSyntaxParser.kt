@@ -114,6 +114,15 @@ internal class RainbowSyntaxParser(private val tokens: List<RainbowToken>) {
 
         var anchor = previous.range.end.line
         val block = if (check(RainbowTokenKind.LeftBrace)) {
+            if (hadParentheses && parameters.isEmpty()) {
+                diagnostics.add(
+                    RainbowDiagnostic(
+                        code = "rainbow.parser.emptyConstructorBlock",
+                        message = "A children block does not take empty parentheses. Write the name and '{', not '()'.",
+                        range = previous.range,
+                    ),
+                )
+            }
             if (peek.range.start.line != anchor) {
                 diagnostics.add(
                     RainbowDiagnostic(

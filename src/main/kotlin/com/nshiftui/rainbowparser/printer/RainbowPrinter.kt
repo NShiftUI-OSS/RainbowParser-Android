@@ -47,8 +47,9 @@ internal class RainbowPrinter(
 
         var header = indent + node.name
         val emitConstructor = !isTriggerNodeName(node.name)
+        val emitParentheses = node.parameters.isNotEmpty() || (node.block == null && emitConstructor)
 
-        if (node.parameters.isNotEmpty() || emitConstructor) {
+        if (emitParentheses) {
             if (shouldBreakParameters(node)) {
                 header += "("
                 parts.add(header)
