@@ -11,7 +11,7 @@ import kotlinx.coroutines.runBlocking
 
 class RoundTripTests : FunSpec({
     test("canonicalRoundTripPreservesStructure") {
-        val source = "Button( title:\"Entrar\", meta:(id:\"login\") ){OnTap{Navigate(to:\"Home\")}}"
+        val source = "Button( title:\"Entrar\", meta:(id:\"login\") )\n.events {\n  OnTap {\n    Navigate(to:\"Home\")\n  }\n}"
         val parser = RainbowParser()
 
         val firstDocument = parser.decode(source)
@@ -23,7 +23,8 @@ class RoundTripTests : FunSpec({
             Button(
               title: "Entrar",
               meta: (id: "login")
-            ) {
+            )
+            .events {
               OnTap {
                 Navigate(to: "Home")
               }
@@ -37,7 +38,7 @@ class RoundTripTests : FunSpec({
                 """
                 use Screen@1.0.0
                 // root comment
-                Screen {
+                Screen() {
                   Text(text: "a")
                   // between plugins
                   Button(title: "b")
@@ -54,7 +55,8 @@ class RoundTripTests : FunSpec({
         val parser = RainbowParser()
         val source = """
             Screen(name: "Home") {
-              Button(title: "Entrar") {
+              Button(title: "Entrar")
+              .events {
                 OnTap {
                   Navigate(to: "Dashboard")
                 }

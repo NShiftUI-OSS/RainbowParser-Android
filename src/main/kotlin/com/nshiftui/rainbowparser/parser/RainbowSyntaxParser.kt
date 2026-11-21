@@ -6,6 +6,8 @@ import com.nshiftui.rainbowparser.ast.RainbowLeadingTrivia
 import com.nshiftui.rainbowparser.ast.RainbowNode
 import com.nshiftui.rainbowparser.ast.RainbowObjectEntry
 import com.nshiftui.rainbowparser.ast.RainbowParameter
+import com.nshiftui.rainbowparser.ast.RainbowSlot
+import com.nshiftui.rainbowparser.ast.RainbowTrigger
 import com.nshiftui.rainbowparser.ast.RainbowUseDeclaration
 import com.nshiftui.rainbowparser.ast.RainbowValue
 import com.nshiftui.rainbowparser.diagnostics.RainbowDiagnostic
@@ -41,14 +43,7 @@ internal class RainbowSyntaxParser(private val tokens: List<RainbowToken>) {
                 else -> {
                     val node = parseNode()
                     if (node != null) {
-                        nodes.add(
-                            RainbowNode(
-                                name = node.name,
-                                parameters = node.parameters,
-                                block = node.block,
-                                leading = leading,
-                            ),
-                        )
+                        nodes.add(node.copy(leading = leading))
                     } else {
                         synchronizeNode()
                     }
@@ -114,19 +109,273 @@ internal class RainbowSyntaxParser(private val tokens: List<RainbowToken>) {
         }
         advance()
 
-        val parameters = if (match(RainbowTokenKind.LeftParen)) {
-            parseArguments()
-        } else {
-            emptyList()
-        }
+        val hadParentheses = match(RainbowTokenKind.LeftParen)
+        val parameters = if (hadParentheses) parseArguments() else emptyList()
 
-        val block = if (match(RainbowTokenKind.LeftBrace)) {
-            parseBlock()
+        var anchor = previous.range.end.line
+        val block = if (check(RainbowTokenKind.LeftBrace)) {
+            if (!hadParentheses) {
+                diagnostics.add(
+                    RainbowDiagnostic(
+                        code = "rainbow.parser.childrenBrace",
+                        message = "A children block belongs after '()', on the same line as ')'.",
+                        range = peek.range,
+                    ),
+                )
+            } else if (peek.range.start.line != anchor) {
+                diagnostics.add(
+                    RainbowDiagnostic(
+                        code = "rainbow.parser.childrenBrace",
+                        message = "The children block must open on the same line as ')'.",
+                        range = peek.range,
+                    ),
+                )
+            }
+            advance()
+            val parsed = parseBlock()
+            anchor = previous.range.end.line
+            parsed
         } else {
             null
         }
 
-        return RainbowNode(name = nameKind.value, parameters = parameters, block = block)
+        val modifiers = parseModifiers(anchor)
+        return RainbowNode(
+            name = nameKind.value,
+            parameters = parameters,
+            block = block,
+            id = modifiers.id,
+            style = modifiers.style,
+            events = modifiers.events,
+            slots = modifiers.slots,
+        )
+    }
+
+    private class ParsedModifiers {
+        var id: String? = null
+        val style = mutableListOf<RainbowParameter>()
+        val events = mutableListOf<RainbowTrigger>()
+        val slots = mutableListOf<RainbowSlot>()
+    }
+
+    private fun parseModifiers(initialAnchor: Int): ParsedModifiers {
+        var anchor = initialAnchor
+        val parsed = ParsedModifiers()
+        val seen = mutableListOf<String>()
+        while (true) {
+            val kind = peek.kind
+            if (kind is RainbowTokenKind.Comment) {
+                if (commentIntroducesModifier()) {
+                    diagnostics.add(
+                        RainbowDiagnostic(
+                            code = "rainbow.parser.modifierSpacing",
+                            message = "A comment cannot sit between a plugin and its view modifier.",
+                            range = peek.range,
+                        ),
+                    )
+                    advance()
+                    continue
+                }
+                break
+            }
+            if (kind !is RainbowTokenKind.DotIdentifier) break
+            val modifier = kind.value
+            val known = modifier == "id" || modifier == "style" || modifier == "events" || modifier == "slots"
+            val line = peek.range.start.line
+            if (!known) {
+                if (line <= anchor + 1) {
+                    diagnostics.add(
+                        RainbowDiagnostic(
+                            code = "rainbow.parser.unknownModifier",
+                            message = "Unknown view modifier '.$modifier'.",
+                            range = peek.range,
+                        ),
+                    )
+                    advance()
+                    continue
+                }
+                break
+            }
+            if (line == anchor) {
+                diagnostics.add(
+                    RainbowDiagnostic(
+                        code = "rainbow.parser.modifierSpacing",
+                        message = "'.$modifier' must start on the line below the plugin.",
+                        range = peek.range,
+                    ),
+                )
+            } else if (line > anchor + 1) {
+                diagnostics.add(
+                    RainbowDiagnostic(
+                        code = "rainbow.parser.modifierSpacing",
+                        message = "'.$modifier' must be on the next line, with no blank line above it.",
+                        range = peek.range,
+                    ),
+                )
+            }
+            if (modifier in seen) {
+                diagnostics.add(
+                    RainbowDiagnostic(
+                        code = "rainbow.parser.duplicateModifier",
+                        message = "'.$modifier' can be written only once on a plugin.",
+                        range = peek.range,
+                    ),
+                )
+            }
+            seen.add(modifier)
+            advance()
+            when (modifier) {
+                "id" -> parsed.id = parseIdModifier()
+                "style" -> parsed.style.addAll(parseStyleModifier())
+                "events" -> parsed.events.addAll(parseEventsModifier())
+                "slots" -> parsed.slots.addAll(parseSlotsModifier())
+            }
+            anchor = previous.range.end.line
+        }
+        return parsed
+    }
+
+    private fun parseIdModifier(): String? {
+        consume(RainbowTokenKind.LeftParen, "Expected '(' after '.id'.")
+        val id = (peek.kind as? RainbowTokenKind.StringToken)?.value.also {
+            if (it == null) appendUnexpectedToken("Expected a string inside '.id(\"...\")'.")
+            else advance()
+        }
+        consume(RainbowTokenKind.RightParen, "Expected ')' after '.id'.")
+        return id
+    }
+
+    private fun parseStyleModifier(): List<RainbowParameter> {
+        if (!match(RainbowTokenKind.LeftParen)) {
+            appendUnexpectedToken("Expected '(' after '.style'.")
+            return emptyList()
+        }
+        return parseArguments()
+    }
+
+    private fun parseEventsModifier(): List<RainbowTrigger> {
+        if (!braceOnSameLine("'.events'")) return emptyList()
+        advance()
+        val triggers = mutableListOf<RainbowTrigger>()
+        while (!significantIsRightBrace && !isAtEnd) {
+            val leading = takeLeadingTrivia()
+            val trigger = parseTrigger()
+            if (trigger != null) triggers.add(trigger.copy(leading = leading))
+            else synchronizeNode()
+        }
+        takeLeadingTrivia()
+        consume(RainbowTokenKind.RightBrace, "Expected '}' after '.events'.")
+        return triggers
+    }
+
+    private fun parseTrigger(): RainbowTrigger? {
+        val nameKind = peek.kind as? RainbowTokenKind.Identifier ?: run {
+            appendUnexpectedToken("Expected a trigger name inside '.events'.")
+            return null
+        }
+        advance()
+        if (check(RainbowTokenKind.LeftParen)) {
+            advance()
+            parseArguments()
+        }
+        if (!braceOnSameLine("a trigger")) return null
+        advance()
+        return RainbowTrigger(name = nameKind.value, events = parseEventCalls())
+    }
+
+    private fun parseEventCalls(): List<RainbowNode> {
+        val events = mutableListOf<RainbowNode>()
+        while (!significantIsRightBrace && !isAtEnd) {
+            val leading = takeLeadingTrivia()
+            val event = parseNode()
+            if (event != null) {
+                if (event.block != null || event.style.isNotEmpty() || event.events.isNotEmpty() || event.slots.isNotEmpty()) {
+                    diagnostics.add(
+                        RainbowDiagnostic(
+                            code = "rainbow.parser.eventShape",
+                            message = "An event only accepts metadata in parentheses and an optional '.id'.",
+                            range = previous.range,
+                        ),
+                    )
+                }
+                events.add(event.copy(leading = leading))
+            } else {
+                synchronizeNode()
+            }
+        }
+        takeLeadingTrivia()
+        consume(RainbowTokenKind.RightBrace, "Expected '}' after trigger.")
+        return events
+    }
+
+    private fun parseSlotsModifier(): List<RainbowSlot> {
+        if (!braceOnSameLine("'.slots'")) return emptyList()
+        advance()
+        val slots = mutableListOf<RainbowSlot>()
+        while (!significantIsRightBrace && !isAtEnd) {
+            val leading = takeLeadingTrivia()
+            val slot = parseSlot()
+            if (slot != null) slots.add(slot.copy(leading = leading))
+            else synchronizeNode()
+        }
+        takeLeadingTrivia()
+        consume(RainbowTokenKind.RightBrace, "Expected '}' after '.slots'.")
+        return slots
+    }
+
+    private fun parseSlot(): RainbowSlot? {
+        val nameKind = peek.kind as? RainbowTokenKind.Identifier ?: run {
+            appendUnexpectedToken("Expected a slot name inside '.slots'.")
+            return null
+        }
+        advance()
+        if (!braceOnSameLine("a slot")) return null
+        advance()
+        return RainbowSlot(name = nameKind.value, plugins = parsePluginList())
+    }
+
+    private fun parsePluginList(): List<RainbowNode> {
+        val plugins = mutableListOf<RainbowNode>()
+        while (!significantIsRightBrace && !isAtEnd) {
+            val leading = takeLeadingTrivia()
+            val plugin = parseNode()
+            if (plugin != null) plugins.add(plugin.copy(leading = leading))
+            else synchronizeNode()
+        }
+        takeLeadingTrivia()
+        consume(RainbowTokenKind.RightBrace, "Expected '}' after plugins.")
+        return plugins
+    }
+
+    private fun braceOnSameLine(what: String): Boolean {
+        if (!check(RainbowTokenKind.LeftBrace)) {
+            appendUnexpectedToken("Expected '{' on the same line as $what.")
+            return false
+        }
+        if (peek.range.start.line != previous.range.end.line) {
+            diagnostics.add(
+                RainbowDiagnostic(
+                    code = "rainbow.parser.braceLine",
+                    message = "The '{' of $what must stay on the same line as its name.",
+                    range = peek.range,
+                ),
+            )
+        }
+        return true
+    }
+
+    private fun commentIntroducesModifier(): Boolean {
+        var index = current
+        while (index < tokens.size) {
+            when (val kind = tokens[index].kind) {
+                is RainbowTokenKind.Comment -> index += 1
+                is RainbowTokenKind.DotIdentifier -> {
+                    return kind.value == "id" || kind.value == "style" || kind.value == "events" || kind.value == "slots"
+                }
+                else -> return false
+            }
+        }
+        return false
     }
 
     private fun parseArguments(): List<RainbowParameter> {
@@ -194,14 +443,7 @@ internal class RainbowSyntaxParser(private val tokens: List<RainbowToken>) {
             val leading = takeLeadingTrivia()
             val child = parseNode()
             if (child != null) {
-                children.add(
-                    RainbowNode(
-                        name = child.name,
-                        parameters = child.parameters,
-                        block = child.block,
-                        leading = leading,
-                    ),
-                )
+                children.add(child.copy(leading = leading))
             } else {
                 synchronizeNode()
             }
@@ -260,6 +502,10 @@ internal class RainbowSyntaxParser(private val tokens: List<RainbowToken>) {
             is RainbowTokenKind.LeftParen -> {
                 advance()
                 parseObject()
+            }
+            is RainbowTokenKind.LeftBrace -> {
+                advance()
+                RainbowValue.Plugins(parsePluginList())
             }
             else -> {
                 appendUnexpectedToken("Expected value.")

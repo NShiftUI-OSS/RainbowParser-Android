@@ -76,22 +76,25 @@ internal class RainbowPrinter(
             parts.add(header)
         }
 
-        val block = node.block ?: return parts.joinToString(style.newline)
-
-        if (parts.isNotEmpty()) {
-            val lastIndex = parts.lastIndex
-            parts[lastIndex] = parts[lastIndex] + " {"
-        }
-
-        if (block.children.isEmpty()) {
-            parts.add("$indent}")
-        } else {
-            val children = block.children.joinToString(style.newline + style.newline) {
-                printNode(it, level + 1)
+        val block = node.block
+        if (block != null) {
+            if (parts.isNotEmpty()) {
+                val lastIndex = parts.lastIndex
+                parts[lastIndex] = parts[lastIndex] + " {"
             }
-            parts.add(children)
-            parts.add("$indent}")
+
+            if (block.children.isEmpty()) {
+                parts.add("$indent}")
+            } else {
+                val children = block.children.joinToString(style.newline + style.newline) {
+                    printNode(it, level + 1)
+                }
+                parts.add(children)
+                parts.add("$indent}")
+            }
         }
+
+        pushModifiers(parts, node, level)
 
         return parts.joinToString(style.newline)
     }
@@ -143,6 +146,7 @@ internal class RainbowPrinter(
             is RainbowValue.ArrayValue ->
                 "[" + value.values.joinToString(", ") { printValue(it, continuationIndent) } + "]"
             is RainbowValue.ObjectValue -> printObject(value.entries, continuationIndent)
+            is RainbowValue.Plugins -> printPluginList(value.plugins, continuationIndent)
             is RainbowValue.Null -> "null"
         }
 
@@ -162,6 +166,72 @@ internal class RainbowPrinter(
         }
         output.append(")")
         return output.toString()
+    }
+
+    private fun pushModifiers(parts: MutableList<String>, node: RainbowNode, level: Int) {
+        val indent = indentation(level)
+        node.id?.let { parts.add("$indent.id(\"${escape(it)}\")") }
+        if (node.style.isNotEmpty()) {
+            parts.add(printStyleModifier(node.style, level))
+        }
+        if (node.events.isNotEmpty()) {
+            parts.add("$indent.events {")
+            val triggerIndent = indentation(level + 1)
+            for (trigger in node.events) {
+                pushLeading(parts, trigger.leading, level + 1)
+                parts.add("$triggerIndent${trigger.name} {")
+                for (event in trigger.events) {
+                    parts.add(printNode(event, level + 2))
+                }
+                parts.add("$triggerIndent}")
+            }
+            parts.add("$indent}")
+        }
+        if (node.slots.isNotEmpty()) {
+            parts.add("$indent.slots {")
+            val slotIndent = indentation(level + 1)
+            for (slot in node.slots) {
+                pushLeading(parts, slot.leading, level + 1)
+                parts.add("$slotIndent${slot.name} {")
+                for (plugin in slot.plugins) {
+                    parts.add(printNode(plugin, level + 2))
+                }
+                parts.add("$slotIndent}")
+            }
+            parts.add("$indent}")
+        }
+    }
+
+    private fun printStyleModifier(parameters: List<RainbowParameter>, level: Int): String {
+        val indent = indentation(level)
+        val complex = parameters.size >= 2 || parameters.any { valueNeedsBreak(it.value) }
+        if (!complex) {
+            val inline = parameters.joinToString(", ") {
+                printParameterInline(it, indentation(level + 1))
+            }
+            return "$indent.style($inline)"
+        }
+        val lines = mutableListOf("$indent.style(")
+        val inner = indentation(level + 1)
+        for ((index, parameter) in parameters.withIndex()) {
+            val entry = printParameterLines(parameter, inner).toMutableList()
+            if (index != parameters.lastIndex && entry.isNotEmpty()) {
+                entry[entry.lastIndex] = entry[entry.lastIndex] + ","
+            }
+            lines.addAll(entry)
+        }
+        lines.add("$indent)")
+        return lines.joinToString(style.newline)
+    }
+
+    private fun printPluginList(plugins: List<RainbowNode>, continuationIndent: String): String {
+        if (plugins.isEmpty()) return "{}"
+        val unit = if (style.indentation.isEmpty()) 1 else style.indentation.length
+        val level = continuationIndent.length / unit + 1
+        val lines = mutableListOf("{")
+        plugins.forEach { lines.add(printNode(it, level)) }
+        lines.add("$continuationIndent}")
+        return lines.joinToString(style.newline)
     }
 
     private fun printObject(entries: List<RainbowObjectEntry>, continuationIndent: String): String {
@@ -230,6 +300,7 @@ private fun valueNeedsBreak(value: RainbowValue): Boolean = when (value) {
         value.body is RainbowTaggedBody.Text && value.body.value.contains('\n')
     is RainbowValue.ObjectValue -> objectNeedsBreak(value.entries)
     is RainbowValue.ArrayValue -> value.values.any { valueNeedsBreak(it) }
+    is RainbowValue.Plugins -> true
     else -> false
 }
 

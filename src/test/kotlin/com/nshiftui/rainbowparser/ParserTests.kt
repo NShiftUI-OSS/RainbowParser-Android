@@ -5,6 +5,7 @@ import com.nshiftui.rainbowparser.ast.RainbowNode
 import com.nshiftui.rainbowparser.ast.RainbowObjectEntry
 import com.nshiftui.rainbowparser.ast.RainbowParameter
 import com.nshiftui.rainbowparser.ast.RainbowTaggedBody
+import com.nshiftui.rainbowparser.ast.RainbowTrigger
 import com.nshiftui.rainbowparser.ast.RainbowUseDeclaration
 import com.nshiftui.rainbowparser.ast.RainbowValue
 import io.kotest.core.spec.style.FunSpec
@@ -21,7 +22,8 @@ class ParserTests : FunSpec({
             use ShowToast@1.3.0
 
             Screen(name: "Home") {
-              Button(title: "Hi") {
+              Button(title: "Hi")
+              .events {
                 OnTap {
                   ShowToast(message: "ok")
                 }
@@ -42,7 +44,8 @@ class ParserTests : FunSpec({
         val document = RainbowDecoder().decode(
             """
             Screen(name: "Home") {
-              Button(title: "Entrar", variant: .primary) {
+              Button(title: "Entrar", variant: .primary)
+              .events {
                 OnTap {
                   Navigate(to: "Dashboard")
                 }
@@ -65,10 +68,10 @@ class ParserTests : FunSpec({
                             RainbowParameter(name = "title", value = RainbowValue.StringValue("Entrar")),
                             RainbowParameter(name = "variant", value = RainbowValue.Identifier("primary")),
                         ),
-                        children = listOf(
-                            RainbowNode(
+                        events = listOf(
+                            RainbowTrigger(
                                 name = "OnTap",
-                                children = listOf(
+                                events = listOf(
                                     RainbowNode(
                                         name = "Navigate",
                                         parameters = listOf(
@@ -140,7 +143,7 @@ class ParserTests : FunSpec({
         val document = RainbowDecoder().decode(
             """
             Root() {
-              EmptyBlock {}
+              EmptyBlock() {}
               Leaf
             }
             """.trimIndent(),
@@ -225,7 +228,7 @@ class ParserTests : FunSpec({
     }
 
     test("parserReportsMissingClosingBlockBrace") {
-        expectDecodeError("Screen { Button").diagnostics.first().message shouldBe
+        expectDecodeError("Screen() { Button").diagnostics.first().message shouldBe
             "Expected '}' after block."
     }
 
@@ -252,7 +255,7 @@ class ParserTests : FunSpec({
     }
 
     test("parserRecoversFromUnexpectedTokenInsideBlock") {
-        expectDecodeError("Root { ) ( Child }").diagnostics.first().message shouldBe
+        expectDecodeError("Root() { ) ( Child }").diagnostics.first().message shouldBe
             "Expected node name."
     }
 

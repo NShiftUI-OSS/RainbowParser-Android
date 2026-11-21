@@ -13,6 +13,7 @@ sealed class RainbowValue {
 
     data class ArrayValue(val values: List<RainbowValue>) : RainbowValue()
     data class ObjectValue(val entries: List<RainbowObjectEntry>) : RainbowValue()
+    data class Plugins(val plugins: List<RainbowNode>) : RainbowValue()
     data object Null : RainbowValue()
 
     /** `@LANG(...)` parameter payload (raw language text or whole-blob placeholder). */

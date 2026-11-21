@@ -2,6 +2,7 @@ package com.nshiftui.rainbowparser
 
 import com.nshiftui.rainbowparser.ast.RainbowDocument
 import com.nshiftui.rainbowparser.ast.RainbowNode
+import com.nshiftui.rainbowparser.ast.RainbowTrigger
 import com.nshiftui.rainbowparser.ast.RainbowObjectEntry
 import com.nshiftui.rainbowparser.ast.RainbowParameter
 import com.nshiftui.rainbowparser.ast.RainbowUseDeclaration
@@ -49,10 +50,10 @@ class PrinterTests : FunSpec({
                                 RainbowParameter(name = "title", value = RainbowValue.StringValue("Entrar")),
                                 RainbowParameter(name = "variant", value = RainbowValue.Identifier("primary")),
                             ),
-                            children = listOf(
-                                RainbowNode(
+                            events = listOf(
+                                RainbowTrigger(
                                     name = "OnTap",
-                                    children = listOf(RainbowNode(name = "Navigate")),
+                                    events = listOf(RainbowNode(name = "Navigate")),
                                 ),
                             ),
                         ),
@@ -66,7 +67,8 @@ class PrinterTests : FunSpec({
               Button(
                 title: "Entrar",
                 variant: .primary
-              ) {
+              )
+              .events {
                 OnTap {
                   Navigate()
                 }
@@ -165,12 +167,13 @@ class PrinterTests : FunSpec({
 
     test("parserFacadeEncodesAndDecodes") {
         val parser = RainbowParser()
-        val source = "Button(title: \"Entrar\") { OnTap {} }"
+        val source = "Button(title: \"Entrar\")\n.events {\n  OnTap {\n  }\n}"
         val document = parser.decode(source)
 
         RainbowParserVersion.current shouldBe "0.1.0-beta.1"
         parser.encode(document) shouldBe """
-            Button(title: "Entrar") {
+            Button(title: "Entrar")
+            .events {
               OnTap {
               }
             }
