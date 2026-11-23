@@ -170,7 +170,7 @@ class PrinterTests : FunSpec({
         val source = "Button(title: \"Entrar\")\n.events {\n  OnTap {\n  }\n}"
         val document = parser.decode(source)
 
-        RainbowParserVersion.current shouldBe "0.1.0-beta.1"
+        RainbowParserVersion.current shouldBe "1.0.0"
         parser.encode(document) shouldBe """
             Button(title: "Entrar")
             .events {

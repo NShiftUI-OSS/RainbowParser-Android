@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.nshiftui.rainbowparser"
-version = "0.1.0-beta.1"
+version = "1.0.0"
 
 android {
     namespace = "com.nshiftui.rainbowparser"
