@@ -5,7 +5,7 @@
 | Path | Notas |
 |------|--------|
 | `settings.gradle.kts` | Projeto `RainbowParser-Android`; Foojay resolver 1.0.0 (daemon toolchain) |
-| `build.gradle.kts` | `com.android.library` 9.4.1, `org.jetbrains.kotlin.android` 2.4.20, Kotest 6.2.4, minSdk 23, compileSdk 37 (`minorApiLevel = 0`), jvmTarget 21, versão `0.1.0-beta.1` |
+| `build.gradle.kts` | `com.android.library` 9.4.1, `org.jetbrains.kotlin.android` 2.4.20, Kotest 6.2.4, minSdk 23, compileSdk 37 (`minorApiLevel = 0`), jvmTarget 21, versão `1.0.0` |
 | `gradle/wrapper/` | Gradle 9.7.1 |
 | `gradle/gradle-daemon-jvm.properties` | Daemon toolchain JDK 25 (JetBrains) |
 | `gradle.properties` | configuration cache; `android.builtInKotlin=false`; `android.newDsl=false` |
@@ -25,7 +25,7 @@
 | `RainbowParser.kt` | public | Facade decode/encode |
 | `RainbowDecoder.kt` | public | Lexer → Parser |
 | `RainbowEncoder.kt` | public | Printer |
-| `RainbowParserVersion.kt` | public | `current = "0.1.0-beta.1"` |
+| `RainbowParserVersion.kt` | public | `current = "1.0.0"` |
 | `RainbowFormatStyle.kt` | public | indent/newline |
 | `ast/RainbowDocument.kt` | public | `uses`, `nodes` |
 | `ast/RainbowNode.kt` | public | `name`, `parameters`, `block`; `children`/`hasBlock` (explicit backing fields) |

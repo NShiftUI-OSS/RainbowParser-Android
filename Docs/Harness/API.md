@@ -17,7 +17,7 @@ val encoded4 = RainbowEncoder(
 ).encode(document2)
 ```
 
-Versão: `RainbowParserVersion.current` → `"0.1.0-beta.1"`.
+Versão: `RainbowParserVersion.current` → `"1.0.0"`.
 
 ## AST
 

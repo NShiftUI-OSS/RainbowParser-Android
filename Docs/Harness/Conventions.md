@@ -7,7 +7,7 @@
 
 Não coloque validação NShiftUI neste AAR. O payload mobile chega concreto.
 
-## Regra do DSL (beta)
+## Regra do DSL
 
 ```text
 () = parâmetros / configuração
@@ -16,22 +16,11 @@ Não coloque validação NShiftUI neste AAR. O payload mobile chega concreto.
 
 Parâmetros são nomeados: `Button(title: "Entrar", variant: .primary)`.
 
-Não usar nós aninhados como valor de parâmetro neste beta. Composição via blocks.
+Não usar nós aninhados como valor de parâmetro nesta versão. Composição via blocks.
 
-## Gramática (alto nível)
+## Gramática concreta
 
-```text
-Document   = UseDecl* Node*
-UseDecl    = "use" Identifier "@" Version
-Node       = Identifier Arguments? Block?
-Arguments  = "(" ParameterList? ")"
-Parameter  = Identifier ":" Value
-Block      = "{" Node* "}"
-Value      = String | Number | Bool | EnumIdentifier | Array | Object | Null | Tagged
-EnumIdentifier = "." Identifier
-```
-
-Trailing commas em arrays são aceitos. Em parâmetros e entradas de objeto, não.
+A [especificação compartilhada](https://github.com/NShiftUI-OSS/RainbowParser-Rust/blob/main/spec/grammar.md) documenta os pins `use`, os modificadores, as listas de plugins e os corpos `@LANG`. Um nó com filhos e sem parâmetros é escrito `Screen { Spinner() }`. O parser preserva os comentários de linha associados ao próximo elemento.
 
 ## Código Kotlin
 

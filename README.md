@@ -1,6 +1,6 @@
 # RainbowParser (Android)
 
-Biblioteca Kotlin de **sintaxe** do DSL Rainbow. Alvo: **minSdk API 23** (Android 6.0), versão `0.1.0-beta.1`. Pacote `com.nshiftui.rainbowparser`. Zero dependências de runtime.
+Biblioteca Kotlin de **sintaxe** do DSL Rainbow. Alvo: **minSdk API 23** (Android 6.0), versão `1.0.0`. Pacote `com.nshiftui.rainbowparser`. Zero dependências de runtime.
 
 Não valida semântica NShiftUI (`Screen`, `Button`, `OnTap`, etc.). Isso vive em NShiftUI.
 
@@ -34,7 +34,7 @@ val document2 = RainbowDecoder().decode(source)
 val encoded2 = RainbowEncoder().encode(document2)
 ```
 
-Versão: `RainbowParserVersion.current` → `"0.1.0-beta.1"`.
+Versão: `RainbowParserVersion.current` → `"1.0.0"`.
 
 Erros de parse: `RainbowParseError` com `diagnostics`.
 
@@ -62,8 +62,8 @@ Os YAML em `.github/workflows/` só orquestram. A lógica de cada job está em `
 
 ```bash
 ALLOWED_ACTOR=ArthurPorto-PucMinas GITHUB_ACTOR=ArthurPorto-PucMinas \
-  VERSION_INPUT=0.1.0-beta.1 BRANCH_INPUT=main \
+  VERSION_INPUT=1.2.3 BRANCH_INPUT=main \
   bash scripts/ci/release/setup.sh
 ```
 
-52 testes Kotest FunSpec (AST, Lexer, Parser, Printer, RoundTrip), espelhando o iOS.
+A suíte Kotest cobre AST, lexer, parser, printer e round-trip, com fixtures de paridade com o iOS.

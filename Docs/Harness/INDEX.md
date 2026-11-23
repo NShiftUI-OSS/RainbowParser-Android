@@ -15,7 +15,7 @@
 
 | Artefato | Papel |
 |----------|--------|
-| `build.gradle.kts` | Library Android, minSdk 23, compileSdk 37, jvmTarget 21, versão `0.1.0-beta.1`, zero deps de runtime |
+| `build.gradle.kts` | Library Android, minSdk 23, compileSdk 37, jvmTarget 21, versão `1.0.0`, zero deps de runtime |
 | `src/main/kotlin/com/nshiftui/rainbowparser/` | Implementação |
 | `src/test/kotlin/com/nshiftui/rainbowparser/` | Comportamento esperado (52 testes) |
 | `README.md` | Documentação humana |

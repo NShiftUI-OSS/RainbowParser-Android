@@ -1,6 +1,6 @@
 # RainbowParser-Android — Agent Harness
 
-Biblioteca Kotlin de **sintaxe** do DSL Rainbow para Android (minSdk API 23 / Android 6.0). Versão `0.1.0-beta.1`. Pacote `com.nshiftui.rainbowparser`. Zero deps de runtime.
+Biblioteca Kotlin de **sintaxe** do DSL Rainbow para Android (minSdk API 23 / Android 6.0). Versão `1.0.0`. Pacote `com.nshiftui.rainbowparser`. Zero deps de runtime.
 
 **Não** valida semântica NShiftUI. Parser **mobile**, mesmo contrato da lib iOS.
 
@@ -54,7 +54,7 @@ Detalhes: `Docs/Harness/API.md`.
 1. Sintaxe apenas — sem registry de componentes/triggers/actions.
 2. AST genérica; encode canônico (não lossless).
 3. Parse falha com `RainbowParseError`.
-4. Não alterar escopo beta: sem macros, expressões, condicionais, loops.
+4. Não alterar escopo atual: sem macros, expressões, condicionais, loops.
 5. Preferir `./gradlew test` após mudanças de sintaxe.
 6. Rainbow **concreto** apenas. Furos `#{Name}` e expand ficam no crate Rust (backend). Ver D8.
 
